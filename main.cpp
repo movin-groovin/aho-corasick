@@ -53,6 +53,9 @@ namespace MAhoCorasik {
 		NodePtr m_root;
 		
 	public:
+		CAhoCorasik () :m_root(new CNode<ALPHABET_SIZE>) {}
+		void Free () {m_root = new CNode<ALPHABET_SIZE>;}
+		
 		void AddPattern (std::string & pattern);
 		size_t GetPatternsNumber () const {return m_patterns.size();}
 		NodePtr Go (NodePtr from, char chGo);
@@ -63,10 +66,44 @@ namespace MAhoCorasik {
 	
 	template <size_t ALPHABET_SIZE>
 	void CAhoCorasik<ALPHABET_SIZE>::AddPattern (std::string & pattern) {
+		NodePtr curNode = m_root, newNode;
 		
-		
+		for (size_t i = 0; i < pattern.size(); ++i)
+		{
+			curNode = curNode->m_childs[pattern[i]];
+			if (curNode) continue;
+			
+			newNode = new CNode<ALPHABET_SIZE>;
+			newNode->m_parrent = curNode;
+			newNode->m_chFromParent = pattern[i];
+			newNode->m_leaf = false;
+			
+			curNode->m_childs[pattern[i]] = newNode;
+			curNode = curNode->m_childs[pattern[i]];
+		}
+		m_patterns.push_back(pattern);
+		curNode->m_patternNumber.push_back(m_patterns.size());
+		curNode->m_leaf = true;
 		
 		return;
+	}
+	
+	template <size_t ALPHABET_SIZE>
+	typename CAhoCorasik<ALPHABET_SIZE>::NodePtr CAhoCorasik<ALPHABET_SIZE>::Go (
+		typename CAhoCorasik<ALPHABET_SIZE>::NodePtr from,
+		char chGo
+	)
+	{
+		if (!from->m_automata[chGo]) {
+			if (from->m_childs[chGo])
+				return from->m_automata[chGo] = from->m_childs[chGo];
+			if (from == m_root)
+				return from->m_automata[chGo] = m_root;
+			
+			return Go(GetSuffLink(from), chGo);
+		}
+		
+		return from->m_automata[chGo];
 	}
 	
 	//
