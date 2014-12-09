@@ -9,19 +9,19 @@
 
 
 
-namespace MAhoCorasik {
+namespace NAhoCorasik {
 
-	template <size_t ALPHABET_SIZE>
+	template <size_t ALPHABET_SIZE, char CHAR_START>
 	class CAhoCorasik;
 
-//
-// node class
-//
-	template <size_t ALPHABET_SIZE>
+	// ===================================
+	// Node class
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
 	class CNode {
 	public:
-		friend CAhoCorasik <ALPHABET_SIZE>;
-		typedef std::shared_ptr <CNode<ALPHABET_SIZE>> ScnPtr;
+		friend CAhoCorasik <ALPHABET_SIZE, CHAR_START>;
+		typedef std::shared_ptr <CNode<ALPHABET_SIZE, CHAR_START>> ScnPtr;
 		
 	private:
 		ScnPtr m_childs[ALPHABET_SIZE];   // childs of each node at prefix tree
@@ -31,93 +31,171 @@ namespace MAhoCorasik {
 		ScnPtr m_goodSufLink; // good suffix link for current node (link to other node-leaf)
 		char m_chFromParent; // character for pass from the parrent of this node to this node
 		bool m_leaf; // true value indicates that this node is terminal for some pattern from prefix tree
-		std::vector<size_t> m_patternNumber; // numbers of patterns that end at this node, linked with m_patterns from CAhoCorasik
+		std::vector<size_t> m_patternNumbers; // numbers of patterns that end at this node, linked with m_patterns from CAhoCorasik
 		
 	public:
 		CNode ();
 		// get - set methods
 	};
+	
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
+	CNode<ALPHABET_SIZE, CHAR_START>::CNode (): m_chFromParent(-1), m_leaf(false) {}
 
-	template <size_t ALPHABET_SIZE>
-	CNode<ALPHABET_SIZE>::CNode (): m_chFromParent(0), m_leaf(false) {}
-
-//
-// algorithm class
-//
-	template <size_t ALPHABET_SIZE = 26> // a-z symbols
+	// ===================================
+	// Algorithm class
+	// ===================================
+	template <size_t ALPHABET_SIZE = 26, char CHAR_START = 'a'> // a-z symbols
 	class CAhoCorasik {
 	private:
-		typedef typename CNode <ALPHABET_SIZE>::ScnPtr NodePtr;
+		typedef typename CNode <ALPHABET_SIZE, CHAR_START>::ScnPtr NodePtr;
 	
 		std::vector<std::string> m_patterns;
 		NodePtr m_root;
 		
 	public:
-		CAhoCorasik () :m_root(new CNode<ALPHABET_SIZE>) {}
-		void Free () {m_root = new CNode<ALPHABET_SIZE>;}
+		CAhoCorasik () :m_root(new CNode<ALPHABET_SIZE, CHAR_START>) {}
+		void Free () {m_root = new CNode<ALPHABET_SIZE, CHAR_START>;}
+		size_t GetCharIndex (char ch) const {return static_cast <unsigned char> (ch - CHAR_START);}
 		
 		void AddPattern (std::string & pattern);
 		size_t GetPatternsNumber () const {return m_patterns.size();}
-		NodePtr Go (NodePtr from, char chGo);
+		NodePtr Go (NodePtr from, size_t moveIndex);
 		NodePtr GetSuffLink (NodePtr node);
 		NodePtr GetGoodSuffLink (NodePtr node);
-		void Search (std::vector <std::pair <size_t, size_t>> & results);
+		void Search (
+			std::string & text,
+			std::vector <std::pair <size_t, std::vector<size_t>>> & results
+		);
 	};
 	
-	template <size_t ALPHABET_SIZE>
-	void CAhoCorasik<ALPHABET_SIZE>::AddPattern (std::string & pattern) {
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
+	void CAhoCorasik<ALPHABET_SIZE, CHAR_START>::AddPattern (std::string & pattern) {
 		NodePtr curNode = m_root, newNode;
 		
 		for (size_t i = 0; i < pattern.size(); ++i)
 		{
-			curNode = curNode->m_childs[pattern[i]];
+			curNode = curNode->m_childs[GetCharIndex(pattern[i])];
 			if (curNode) continue;
 			
-			newNode = new CNode<ALPHABET_SIZE>;
+			newNode = NodePtr (new CNode<ALPHABET_SIZE, CHAR_START>);
 			newNode->m_parrent = curNode;
 			newNode->m_chFromParent = pattern[i];
 			newNode->m_leaf = false;
 			
-			curNode->m_childs[pattern[i]] = newNode;
-			curNode = curNode->m_childs[pattern[i]];
+			curNode->m_childs[GetCharIndex(pattern[i])] = newNode;
+			curNode = curNode->m_childs[GetCharIndex(pattern[i])];
 		}
 		m_patterns.push_back(pattern);
-		curNode->m_patternNumber.push_back(m_patterns.size());
+		curNode->m_patternNumbers.push_back(m_patterns.size());
 		curNode->m_leaf = true;
 		
 		return;
 	}
 	
-	template <size_t ALPHABET_SIZE>
-	typename CAhoCorasik<ALPHABET_SIZE>::NodePtr CAhoCorasik<ALPHABET_SIZE>::Go (
-		typename CAhoCorasik<ALPHABET_SIZE>::NodePtr from,
-		char chGo
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
+	typename CAhoCorasik<ALPHABET_SIZE, CHAR_START>::NodePtr CAhoCorasik<ALPHABET_SIZE, CHAR_START>::Go (
+		typename CAhoCorasik<ALPHABET_SIZE, CHAR_START>::NodePtr from,
+		size_t moveIndex
 	)
 	{
-		if (!from->m_automata[chGo]) {
-			if (from->m_childs[chGo])
-				return from->m_automata[chGo] = from->m_childs[chGo];
-			if (from == m_root)
-				return from->m_automata[chGo] = m_root;
-			
-			return Go(GetSuffLink(from), chGo);
+		if (!from->m_automata[moveIndex]) {
+			if (from->m_childs[moveIndex])
+				from->m_automata[moveIndex] = from->m_childs[moveIndex];
+			else if (from == m_root)
+				from->m_automata[moveIndex] = m_root;
+			else
+				from->m_automata[moveIndex] = Go(GetSuffLink(from), moveIndex);
 		}
 		
-		return from->m_automata[chGo];
+		return from->m_automata[moveIndex];
 	}
 	
-	//
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
+	typename CAhoCorasik<ALPHABET_SIZE, CHAR_START>::NodePtr CAhoCorasik<ALPHABET_SIZE, CHAR_START>::GetSuffLink (
+		NodePtr node
+	)
+	{
+		if (!node->m_sufLink) {
+			if (node == m_root || node->m_parrent == m_root)
+				node->m_sufLink = m_root;
+			node->m_sufLink = Go(GetSuffLink(node->m_parrent), GetCharIndex (node->m_chFromParent));
+		}
+		
+		return node->m_sufLink;
+	}
+	
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
+	typename CAhoCorasik<ALPHABET_SIZE, CHAR_START>::NodePtr CAhoCorasik<ALPHABET_SIZE, CHAR_START>::GetGoodSuffLink (
+		NodePtr node
+	)
+	{
+		NodePtr curNode;
+		
+		if (!node->m_goodSufLink) {
+			curNode = GetSuffLink(node);
+			if (curNode->m_leaf || curNode == m_root)
+				node->m_goodSufLink = curNode;
+			else
+				node->m_goodSufLink = GetGoodSuffLink(GetSuffLink(node));
+		}
+		
+		return node->m_goodSufLink;
+	}
+	
+	// ===================================
+	template <size_t ALPHABET_SIZE, char CHAR_START>
+	void CAhoCorasik<ALPHABET_SIZE, CHAR_START>::Search (
+		std::string & text,
+		std::vector <std::pair <size_t, std::vector<size_t>>> & results
+	)
+	{
+		NodePtr state = m_root, curNode;
+		size_t chInd;
+		
+		for (size_t i = 0; i < text.size(); ++i) {
+			chInd = GetCharIndex(text[i]);
+			if ((state = Go(state, chInd)) == m_root) continue;
+			
+			curNode = state;
+			while (curNode != m_root) {
+				if (curNode->m_leaf) {
+					results.push_back (std::make_pair (i, curNode->m_patternNumbers));
+				}
+				curNode = GetGoodSuffLink(curNode);
+			}
+		}
+		
+		return;
+	}
 }
 
 
 int main (int argc, char **argv) {
 	std::string text = "it is widely learned as a second language and is an official language of the european union.";
 	std::vector <std::string> strArr = {"an", "learn", "fuck", "the", "one_two_three"};
-	std::vector <std::pair <size_t, size_t>> results;
-	MAhoCorasik::CAhoCorasik <> aho;
+	std::vector <std::pair <size_t, std::vector<size_t>>> results;
+	NAhoCorasik::CAhoCorasik <> aho;
 	
 	
-	;
+	for (auto it = strArr.begin(); it != strArr.end(); ++it) {
+		aho.AddPattern(*it);
+	}
+	aho.Search(text, results);
+	
+	std::cout << "Size: " << results.size() << std::endl;
+	for (size_t i = 0; i < results.size(); ++i) {
+		std::cout << "Position: " << results[i].first << "; ";
+		std::vector<size_t> ptrnNums = results[i].second;
+		for (size_t j = 0; j < ptrnNums.size(); ++j) {
+			std::cout << ptrnNums[j] << ", ";
+		}
+		std::cout << std::endl;
+	}
 	
 	
 	return 0;
