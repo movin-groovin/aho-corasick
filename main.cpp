@@ -182,6 +182,27 @@ namespace NAhoCorasik {
 }
 
 
+template <size_t ALPHABET_SIZE, char CHAR_START>
+void PrintResults (
+	NAhoCorasik::CAhoCorasik <ALPHABET_SIZE, CHAR_START> & aho,
+	std::vector <std::pair <size_t, std::vector<size_t>>> & results
+)
+{
+	std::cout << "Size: " << results.size() << std::endl;
+	for (size_t i = 0; i < results.size(); ++i) {
+		std::cout << "Position: " << results[i].first << "; ";
+		std::vector<size_t> ptrnNums = results[i].second;
+		for (size_t j = 0; j < ptrnNums.size(); ++j) {
+			if (j != 0) std::cout  << ", ";
+			std::cout << aho.GetPatternByIndex (ptrnNums[j]);
+		}
+		std::cout << std::endl;
+	}
+	
+	return;
+}
+
+
 int main (int argc, char **argv) {
 	std::string text = "it is widely learned as a second language and is an official language of the european union.";
 	std::vector <std::string> strArr = {"an", "learn", "fuck", "the", "one_two_three"};
@@ -193,17 +214,7 @@ int main (int argc, char **argv) {
 		aho.AddPattern(*it);
 	}
 	aho.Search(text, results);
-	
-	std::cout << "Size: " << results.size() << std::endl;
-	for (size_t i = 0; i < results.size(); ++i) {
-		std::cout << "Position: " << results[i].first << "; ";
-		std::vector<size_t> ptrnNums = results[i].second;
-		for (size_t j = 0; j < ptrnNums.size(); ++j) {
-			if (j != 0) std::cout  << ", ";
-			std::cout << aho.GetPatternByIndex (ptrnNums[j]);
-		}
-		std::cout << std::endl;
-	}
+	PrintResults (aho, results);
 	
 	
 	return 0;
