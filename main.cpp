@@ -94,7 +94,7 @@ namespace NAhoCorasik {
 			curNode = curNode->m_childs[GetCharIndex(pattern[i])];
 		}
 		m_patterns.push_back(pattern);
-		curNode->m_patternNumbers.push_back(m_patterns.size());
+		curNode->m_patternNumbers.push_back(m_patterns.size() - 1);
 		curNode->m_leaf = true;
 		
 		return;
@@ -190,11 +190,13 @@ void PrintResults (
 {
 	std::cout << "Size: " << results.size() << std::endl;
 	for (size_t i = 0; i < results.size(); ++i) {
-		std::cout << "Position: " << results[i].first << "; ";
+		size_t endPos = results[i].first;
 		std::vector<size_t> ptrnNums = results[i].second;
 		for (size_t j = 0; j < ptrnNums.size(); ++j) {
-			if (j != 0) std::cout  << ", ";
-			std::cout << aho.GetPatternByIndex (ptrnNums[j]);
+			std::string pattern = aho.GetPatternByIndex (ptrnNums[j]);
+			std::cout  << "Position: " << endPos - (pattern.length() - 1) << " - ";
+			std::cout << pattern;
+			if (j != 0) std::cout << "; ";
 		}
 		std::cout << std::endl;
 	}
