@@ -54,12 +54,16 @@ namespace NAhoCorasik {
 		NodePtr m_root;
 		
 	public:
-		CAhoCorasik () :m_root(new CNode<ALPHABET_SIZE, CHAR_START>) {}
-		void Free () {m_root = new CNode<ALPHABET_SIZE, CHAR_START>;}
+		CAhoCorasik (): m_root(new CNode<ALPHABET_SIZE, CHAR_START>) {}
+		void Free () {m_root = NodePtr (new CNode<ALPHABET_SIZE, CHAR_START>);}
 		size_t GetCharIndex (char ch) const {return static_cast <unsigned char> (ch - CHAR_START);}
+		size_t GetPatternsNumber () const {return m_patterns.size();}
+		std::string GetPatternByIndex (size_t i) const {
+			if (i >= m_patterns.size()) return std::string("");
+			return m_patterns[i];
+		}
 		
 		void AddPattern (std::string & pattern);
-		size_t GetPatternsNumber () const {return m_patterns.size();}
 		NodePtr Go (NodePtr from, size_t moveIndex);
 		NodePtr GetSuffLink (NodePtr node);
 		NodePtr GetGoodSuffLink (NodePtr node);
@@ -76,8 +80,10 @@ namespace NAhoCorasik {
 		
 		for (size_t i = 0; i < pattern.size(); ++i)
 		{
-			curNode = curNode->m_childs[GetCharIndex(pattern[i])];
-			if (curNode) continue;
+			if (curNode->m_childs[GetCharIndex(pattern[i])]) {
+				curNode = curNode->m_childs[GetCharIndex(pattern[i])];
+				continue;
+			}
 			
 			newNode = NodePtr (new CNode<ALPHABET_SIZE, CHAR_START>);
 			newNode->m_parrent = curNode;
@@ -122,7 +128,8 @@ namespace NAhoCorasik {
 		if (!node->m_sufLink) {
 			if (node == m_root || node->m_parrent == m_root)
 				node->m_sufLink = m_root;
-			node->m_sufLink = Go(GetSuffLink(node->m_parrent), GetCharIndex (node->m_chFromParent));
+			else
+				node->m_sufLink = Go(GetSuffLink(node->m_parrent), GetCharIndex (node->m_chFromParent));
 		}
 		
 		return node->m_sufLink;
@@ -192,7 +199,8 @@ int main (int argc, char **argv) {
 		std::cout << "Position: " << results[i].first << "; ";
 		std::vector<size_t> ptrnNums = results[i].second;
 		for (size_t j = 0; j < ptrnNums.size(); ++j) {
-			std::cout << ptrnNums[j] << ", ";
+			if (j != 0) std::cout  << ", ";
+			std::cout << aho.GetPatternByIndex (ptrnNums[j]);
 		}
 		std::cout << std::endl;
 	}
