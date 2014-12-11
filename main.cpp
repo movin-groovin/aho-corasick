@@ -2,6 +2,7 @@
 // http://neerc.ifmo.ru/wiki/index.php?title=%D0%90%D0%BB%D0%B3%D0%BE%D1%80%D0%B8%D1%82%D0%BC_%D0%90%D1%85%D0%BE-%D0%9A%D0%BE%D1%80%D0%B0%D1%81%D0%B8%D0%BA
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <memory>
@@ -63,19 +64,19 @@ namespace NAhoCorasik {
 			return m_patterns[i];
 		}
 		
-		void AddPattern (std::string & pattern);
+		void AddPattern (const std::string & pattern);
 		NodePtr Go (NodePtr from, size_t moveIndex);
 		NodePtr GetSuffLink (NodePtr node);
 		NodePtr GetGoodSuffLink (NodePtr node);
 		void Search (
-			std::string & text,
+			const std::string & text,
 			std::vector <std::pair <size_t, std::vector<size_t>>> & results
 		);
 	};
 	
 	// ===================================
 	template <size_t ALPHABET_SIZE, char CHAR_START>
-	void CAhoCorasik<ALPHABET_SIZE, CHAR_START>::AddPattern (std::string & pattern) {
+	void CAhoCorasik<ALPHABET_SIZE, CHAR_START>::AddPattern (const std::string & pattern) {
 		NodePtr curNode = m_root, newNode;
 		
 		for (size_t i = 0; i < pattern.size(); ++i)
@@ -157,7 +158,7 @@ namespace NAhoCorasik {
 	// ===================================
 	template <size_t ALPHABET_SIZE, char CHAR_START>
 	void CAhoCorasik<ALPHABET_SIZE, CHAR_START>::Search (
-		std::string & text,
+		const std::string & text,
 		std::vector <std::pair <size_t, std::vector<size_t>>> & results
 	)
 	{
@@ -181,7 +182,9 @@ namespace NAhoCorasik {
 	}
 }
 
-
+//
+// Results printing
+//
 template <size_t ALPHABET_SIZE, char CHAR_START>
 void PrintResults (
 	NAhoCorasik::CAhoCorasik <ALPHABET_SIZE, CHAR_START> & aho,
@@ -204,8 +207,10 @@ void PrintResults (
 	return;
 }
 
-
-int main (int argc, char **argv) {
+//
+// Testing driver
+//
+int MainFirst (int argc, char **argv) {
 	std::string text = "it is widely learned as a second language and is an official language of the european union.";
 	std::vector <std::string> strArr = {"an", "learn", "fuck", "the", "one_two_three"};
 	std::vector <std::pair <size_t, std::vector<size_t>>> results;
@@ -223,6 +228,41 @@ int main (int argc, char **argv) {
 }
 
 
+int MainTest (int argc, char **argv) {
+	size_t sizePerIter = 100 * 1024 * 1024;
+	size_t fileNameInd = 1;
+	std::vector<char> text(sizePerIter + 1);
+	std::vector <std::pair <size_t, std::vector<size_t>>> results;
+	NAhoCorasik::CAhoCorasik <> aho;
+	
+	
+	for (int i = fileNameInd + 1; i < argc; ++i) aho.AddPattern(argv[i]);
+	
+	std::ifstream iFs (argv[1]);
+	if (!iFs) {
+		std::cout << "Can't read " << argv[1] << std::endl;
+		return 1001;
+	}
+	
+	size_t readNumber;
+	while (readNumber = iFs.getline (&text[0], sizePerIter).gcount()) {
+		aho.Search(&text[0], results);
+		PrintResults (aho, results);
+	}
+	
+	
+	return 0;
+}
+
+
+int main (int argc, char **argv) {
+	int ret;
+	
+	//ret = MainFirst (argc, argv);
+	ret = MainTest (argc, argv);
+	
+	return ret;
+}
 
 
 
