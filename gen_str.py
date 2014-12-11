@@ -34,22 +34,33 @@ class RandStrings (object):
 
 def WriteStringToFile(
 	fileName,
+	outStr,
 	strNum,
 	listOfStr,
 	startPos = 1024*1024*100,
 	deltaPos = 1024 * 1024
 ):
 	totalPos = 0
+	subsInd = 0
+	stopSubs = False
 	
 	try:
 		fOut = file (fileName, 'w')
 		while strNum > 0:
-			#
-			# writing 
-			#
+			fOut.write(outStr)
+			totalPos += len(outStr)
+			
+			if totalPos > startPos and not stopSubs:
+				try:
+					fOut.write(listOfStr[subsInd])
+				except IndexError:
+					stopSubs = True
+				startPos += deltaPos
+				subsInd += 1
+			
 			strNum -= 1
 		fOut.close()
-	except EEE as Exc:
+	except IOError as Exc:
 		print "Have happened an exception: ", Exc
 		return False
 	
@@ -66,8 +77,7 @@ def main():
 	
 	genStr = RandStrings(int ((time.time() % 1) * 1000))
 	outStr = genStr.MakeString(strLen)
-	#WriteStringToFile (fileName, strNum)
-	print outStr
+	WriteStringToFile (fileName, outStr, strNum, sys.argv[1:len(sys.argv)+1])
 	
 	return 0
 
