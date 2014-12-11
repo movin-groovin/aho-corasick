@@ -191,7 +191,12 @@ void PrintResults (
 	std::vector <std::pair <size_t, std::vector<size_t>>> & results
 )
 {
-	std::cout << "Size: " << results.size() << std::endl;
+	//std::cout << "Size: " << results.size() << std::endl;
+	if (results.size() == 0) {
+		std::cout << "No results\n";
+		return;
+	}
+	
 	for (size_t i = 0; i < results.size(); ++i) {
 		size_t endPos = results[i].first;
 		std::vector<size_t> ptrnNums = results[i].second;
@@ -233,21 +238,26 @@ int MainTest (int argc, char **argv) {
 	size_t fileNameInd = 1;
 	std::vector<char> text(sizePerIter + 1);
 	std::vector <std::pair <size_t, std::vector<size_t>>> results;
-	NAhoCorasik::CAhoCorasik <> aho;
+	NAhoCorasik::CAhoCorasik <256, static_cast<char>(0)> aho;
 	
 	
+	if (argc < 3) {
+		std::cout << "Too few parameters\n";
+		return 10001;
+	}
 	for (int i = fileNameInd + 1; i < argc; ++i) aho.AddPattern(argv[i]);
 	
-	std::ifstream iFs (argv[1]);
+	std::ifstream iFs (argv[1], std::ifstream::binary);
 	if (!iFs) {
-		std::cout << "Can't read " << argv[1] << std::endl;
-		return 1001;
+		std::cout << "Can't read from: " << argv[1] << std::endl;
+		return 10002;
 	}
 	
 	size_t readNumber;
-	while (readNumber = iFs.getline (&text[0], sizePerIter).gcount()) {
+	while (readNumber = iFs.read (&text[0], sizePerIter).gcount()) {
 		aho.Search(&text[0], results);
 		PrintResults (aho, results);
+		results.clear();
 	}
 	
 	
