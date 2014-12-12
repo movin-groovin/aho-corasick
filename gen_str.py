@@ -37,12 +37,12 @@ def WriteStringToFile(
 	outStr,
 	strNum,
 	listOfStr,
-	startPos = 1024*1024*100,
+	startPos = 1024*1024*50,
 	deltaPos = 1024 * 1024
 ):
 	totalPos = 0
 	subsInd = 0
-	stopSubs = False
+	subsWriting = True
 	
 	try:
 		fOut = file (fileName, 'w')
@@ -50,11 +50,11 @@ def WriteStringToFile(
 			fOut.write(outStr)
 			totalPos += len(outStr)
 			
-			if totalPos > startPos and not stopSubs:
+			if totalPos >= startPos and subsWriting:
 				try:
 					fOut.write(listOfStr[subsInd])
 				except IndexError:
-					stopSubs = True
+					subsWriting = False
 				startPos += deltaPos
 				subsInd += 1
 			
@@ -67,13 +67,23 @@ def WriteStringToFile(
 	return True
 
 
+def PrintHelp():
+	print "Usage: gen_str.py [one or more substrings], example: ./gen_str.py Hello 12345 qwerty"
+	return
+
+
 def main():
-	strLen = 1025
-	strNum = 1024 * 1024
-	fileName = 'ascii_1gb.txt'
+	strLen = 1024
+	strNum = 1024 * 100
+	fileName = 'ascii_test.txt'
 	if (len (sys.argv) < 2):
 		print "Enter one or more strings"
+		PrintHelp()
 		return 10001
+	
+	if sys.argv[1] == '-h':
+		PrintHelp()
+		return 0
 	
 	genStr = RandStrings(int ((time.time() % 1) * 1000))
 	outStr = genStr.MakeString(strLen)

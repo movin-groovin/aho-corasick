@@ -1,7 +1,7 @@
 
 
 CC=g++
-CXXFLAGS=-c -Wall -std=c++11
+CXXFLAGS=-c -Wall -std=c++11 -g
 
 
 all: project

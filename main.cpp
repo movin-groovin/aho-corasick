@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <utility>
+#include <set>
 
 
 
@@ -23,19 +24,21 @@ namespace NAhoCorasik {
 	public:
 		friend CAhoCorasik <ALPHABET_SIZE, CHAR_START>;
 		typedef std::shared_ptr <CNode<ALPHABET_SIZE, CHAR_START>> ScnPtr;
+		typedef std::weak_ptr <CNode<ALPHABET_SIZE, CHAR_START>> ScnPtrWeak;
 		
 	private:
 		ScnPtr m_childs[ALPHABET_SIZE];   // childs of each node at prefix tree
-		ScnPtr m_automata[ALPHABET_SIZE]; // states of finite machine
-		ScnPtr m_parrent; // link to parent of curernt node
-		ScnPtr m_sufLink; // suffix link for current node
-		ScnPtr m_goodSufLink; // good suffix link for current node (link to other node-leaf)
+		ScnPtrWeak m_automata[ALPHABET_SIZE]; // states of finite machine
+		ScnPtrWeak m_parrent; // link to parent of curernt node
+		ScnPtrWeak m_sufLink; // suffix link for current node
+		ScnPtrWeak m_goodSufLink; // good suffix link for current node (link to other node-leaf)
 		char m_chFromParent; // character for pass from the parrent of this node to this node
 		bool m_leaf; // true value indicates that this node is terminal for some pattern from prefix tree
 		std::vector<size_t> m_patternNumbers; // numbers of patterns that end at this node, linked with m_patterns from CAhoCorasik
 		
 	public:
 		CNode ();
+		//~CNode() {printf("Bye bye\n");}
 		// get - set methods
 	};
 	
@@ -56,6 +59,7 @@ namespace NAhoCorasik {
 		
 	public:
 		CAhoCorasik (): m_root(new CNode<ALPHABET_SIZE, CHAR_START>) {}
+		//~ CAhoCorasik () {printf("Bye bye algo: %ld\n", m_root.use_count());}
 		void Free () {m_root = NodePtr (new CNode<ALPHABET_SIZE, CHAR_START>);}
 		size_t GetCharIndex (char ch) const {return static_cast <unsigned char> (ch - CHAR_START);}
 		size_t GetPatternsNumber () const {return m_patterns.size();}
@@ -108,7 +112,7 @@ namespace NAhoCorasik {
 		size_t moveIndex
 	)
 	{
-		if (!from->m_automata[moveIndex]) {
+		if (!from->m_automata[moveIndex].lock()) {
 			if (from->m_childs[moveIndex])
 				from->m_automata[moveIndex] = from->m_childs[moveIndex];
 			else if (from == m_root)
@@ -117,7 +121,7 @@ namespace NAhoCorasik {
 				from->m_automata[moveIndex] = Go(GetSuffLink(from), moveIndex);
 		}
 		
-		return from->m_automata[moveIndex];
+		return from->m_automata[moveIndex].lock();
 	}
 	
 	// ===================================
@@ -126,14 +130,14 @@ namespace NAhoCorasik {
 		NodePtr node
 	)
 	{
-		if (!node->m_sufLink) {
-			if (node == m_root || node->m_parrent == m_root)
+		if (!node->m_sufLink.lock()) {
+			if (node == m_root || node->m_parrent.lock() == m_root)
 				node->m_sufLink = m_root;
 			else
-				node->m_sufLink = Go(GetSuffLink(node->m_parrent), GetCharIndex (node->m_chFromParent));
+				node->m_sufLink = Go(GetSuffLink(node->m_parrent.lock()), GetCharIndex (node->m_chFromParent));
 		}
 		
-		return node->m_sufLink;
+		return node->m_sufLink.lock();
 	}
 	
 	// ===================================
@@ -144,7 +148,7 @@ namespace NAhoCorasik {
 	{
 		NodePtr curNode;
 		
-		if (!node->m_goodSufLink) {
+		if (!node->m_goodSufLink.lock()) {
 			curNode = GetSuffLink(node);
 			if (curNode->m_leaf || curNode == m_root)
 				node->m_goodSufLink = curNode;
@@ -152,7 +156,7 @@ namespace NAhoCorasik {
 				node->m_goodSufLink = GetGoodSuffLink(GetSuffLink(node));
 		}
 		
-		return node->m_goodSufLink;
+		return node->m_goodSufLink.lock();
 	}
 	
 	// ===================================
@@ -188,7 +192,8 @@ namespace NAhoCorasik {
 template <size_t ALPHABET_SIZE, char CHAR_START>
 void PrintResults (
 	NAhoCorasik::CAhoCorasik <ALPHABET_SIZE, CHAR_START> & aho,
-	std::vector <std::pair <size_t, std::vector<size_t>>> & results
+	std::vector <std::pair <size_t, std::vector<size_t>>> & results,
+	size_t offset = 0
 )
 {
 	//std::cout << "Size: " << results.size() << std::endl;
@@ -202,9 +207,9 @@ void PrintResults (
 		std::vector<size_t> ptrnNums = results[i].second;
 		for (size_t j = 0; j < ptrnNums.size(); ++j) {
 			std::string pattern = aho.GetPatternByIndex (ptrnNums[j]);
-			std::cout  << "Position: " << endPos - (pattern.length() - 1) << " - ";
+			std::cout  << "Position: " << offset + endPos - (pattern.length() - 1) << " - ";
 			std::cout << pattern;
-			if (j != 0) std::cout << "; ";
+			if (j + 1 != ptrnNums.size()) std::cout << std::endl;
 		}
 		std::cout << std::endl;
 	}
@@ -233,19 +238,28 @@ int MainFirst (int argc, char **argv) {
 }
 
 
+void PrintUsage() {
+	std::cout << "Example of usage: ./main file_name [one or more substrings]" << std::endl;
+	return;
+}
+
+
 int MainTest (int argc, char **argv) {
-	size_t sizePerIter = 100 * 1024 * 1024;
+	size_t sizePerIter = 200 * 1024 * 1024, cntRead = 0; // 200 MB buffer
 	size_t fileNameInd = 1;
 	std::vector<char> text(sizePerIter + 1);
 	std::vector <std::pair <size_t, std::vector<size_t>>> results;
 	NAhoCorasik::CAhoCorasik <256, static_cast<char>(0)> aho;
+	std::set <std::string> uniqStr;
 	
 	
 	if (argc < 3) {
 		std::cout << "Too few parameters\n";
+		PrintUsage();
 		return 10001;
 	}
-	for (int i = fileNameInd + 1; i < argc; ++i) aho.AddPattern(argv[i]);
+	for (int i = fileNameInd + 1; i < argc; ++i) uniqStr.insert(argv[i]);
+	for (auto it = uniqStr.begin(); it != uniqStr.end(); ++it) aho.AddPattern(*it);
 	
 	std::ifstream iFs (argv[1], std::ifstream::binary);
 	if (!iFs) {
@@ -255,9 +269,11 @@ int MainTest (int argc, char **argv) {
 	
 	size_t readNumber;
 	while (readNumber = iFs.read (&text[0], sizePerIter).gcount()) {
+		text[readNumber] = '\0';
 		aho.Search(&text[0], results);
-		PrintResults (aho, results);
+		PrintResults (aho, results, sizePerIter * cntRead);
 		results.clear();
+		++cntRead;
 	}
 	
 	
@@ -268,6 +284,8 @@ int MainTest (int argc, char **argv) {
 int main (int argc, char **argv) {
 	int ret;
 	
+	//std::cout << "Size node: " << sizeof(NAhoCorasik::CNode <256, static_cast<char>(0)>) << '\n';
+	//std::cout << "Size algo: " << sizeof(NAhoCorasik::CAhoCorasik <256, static_cast<char>(0)>) << '\n';
 	//ret = MainFirst (argc, argv);
 	ret = MainTest (argc, argv);
 	
